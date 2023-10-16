@@ -1,6 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_register_form/auth_repository.dart';
+import 'package:flutter_register_form/bloc/auth_bloc.dart';
+import 'package:flutter_register_form/mod/thirdpage.dart';
 import 'package:flutter_register_form/translations/locale_keys.g.dart';
 
 void main() {
@@ -25,7 +29,7 @@ class _RegistrationFormState extends State<RegistrationForm> {
   bool _hidePass = true;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  TextEditingController _fullNameController = TextEditingController();
+  TextEditingController _NameController = TextEditingController();
   TextEditingController _phoneNumberController = TextEditingController();
   TextEditingController _emailController = TextEditingController();
   TextEditingController _lifeHistoryController = TextEditingController();
@@ -35,13 +39,16 @@ class _RegistrationFormState extends State<RegistrationForm> {
   final List<String> _countries = ['Russia', 'Ukraine', 'Germany', 'France'];
   String _selectedCountry = 'Russia';
 
+  late AuthBloc _authBloc;
+  final AuthRepository _authRepository = AuthRepository();
+
   final _nameFocus = FocusNode();
   final _phoneFocus = FocusNode();
   final _passFocus = FocusNode();
 
   @override
   void dispose() {
-    _fullNameController.dispose();
+    _NameController.dispose();
     _phoneNumberController.dispose();
     _emailController.dispose();
     _lifeHistoryController.dispose();
@@ -50,11 +57,48 @@ class _RegistrationFormState extends State<RegistrationForm> {
     _nameFocus.dispose();
     _phoneFocus.dispose();
     _passFocus.dispose();
+    _authBloc.close();
     super.dispose();
   }
 
   @override
+  void initState() {
+    super.initState();
+    _authBloc = AuthBloc(authRepository: _authRepository);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return BlocProvider<AuthBloc>(
+      create: (context) => _authBloc,
+      child: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is Registered) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SecondPage(
+                  Name: _NameController.text,
+                  phoneNumber: _phoneNumberController.text,
+                  email: _emailController.text,
+                  country: _selectedCountry,
+                  lifeHistory: _lifeHistoryController.text,
+                ),
+              ),
+            );
+          } else if (state is Error) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message)),
+            );
+          }
+        },
+        child: _buildBody(context),
+      ),
+    );
+  }
+
+  @override
+  Widget _buildBody(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Register Form'),
@@ -68,23 +112,24 @@ class _RegistrationFormState extends State<RegistrationForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 10.0),
                 TextFormField(
                   focusNode: _nameFocus,
                   autofocus: true,
-                  controller: _fullNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    hintText: 'What do people call you?',
+                  controller: _NameController,
+                  decoration: InputDecoration(
+                    labelText: LocaleKeys.username.tr(),
+                    hintText: LocaleKeys.inputusername.tr(),
                     prefixIcon: Icon(Icons.person),
-                    suffixIcon: Icon(
+                    suffixIcon: const Icon(
                       Icons.delete_outline,
                       color: Colors.red,
                     ),
-                    enabledBorder: OutlineInputBorder(
+                    enabledBorder: const OutlineInputBorder(
                       borderRadius: BorderRadius.all(Radius.circular(20.0)),
                       borderSide: BorderSide(color: Colors.black, width: 2.0),
                     ),
-                    focusedBorder: OutlineInputBorder(
+                    focusedBorder: const OutlineInputBorder(
                       borderRadius: BorderRadius.all(Radius.circular(20.0)),
                       borderSide: BorderSide(color: Colors.blue, width: 2.0),
                     ),
@@ -96,23 +141,23 @@ class _RegistrationFormState extends State<RegistrationForm> {
                     return null;
                   },
                 ),
-                SizedBox(height: 10.0),
+                const SizedBox(height: 10.0),
                 TextFormField(
                   controller: _phoneNumberController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    hintText: 'Enter your phone number',
-                    helperText: 'Phone format: (XXX)-XXX-XX-XX',
+                  decoration: InputDecoration(
+                    labelText: LocaleKeys.userphone.tr(),
+                    hintText: LocaleKeys.phonenumber.tr(),
+                    helperText: LocaleKeys.inputphone.tr(),
                     prefixIcon: Icon(Icons.call),
-                    suffixIcon: Icon(
+                    suffixIcon: const Icon(
                       Icons.delete_outline,
                       color: Colors.red,
                     ),
-                    enabledBorder: OutlineInputBorder(
+                    enabledBorder: const OutlineInputBorder(
                       borderRadius: BorderRadius.all(Radius.circular(20.0)),
                       borderSide: BorderSide(color: Colors.black, width: 2.0),
                     ),
-                    focusedBorder: OutlineInputBorder(
+                    focusedBorder: const OutlineInputBorder(
                       borderRadius: BorderRadius.all(Radius.circular(20.0)),
                       borderSide: BorderSide(color: Colors.blue, width: 2.0),
                     ),
@@ -133,7 +178,7 @@ class _RegistrationFormState extends State<RegistrationForm> {
                   controller: _emailController,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    hintText: 'Enter a email address',
+                    hintText: LocaleKeys.inputemail.tr(),
                     icon: Icon(Icons.mail),
                   ),
                   keyboardType: TextInputType.emailAddress,
@@ -146,12 +191,12 @@ class _RegistrationFormState extends State<RegistrationForm> {
                     return null;
                   },
                 ),
-                SizedBox(height: 10.0),
+                const SizedBox(height: 10.0),
                 DropdownButtonFormField(
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: OutlineInputBorder(),
                     icon: Icon(Icons.map),
-                    labelText: 'Country',
+                    labelText: LocaleKeys.inputcountry.tr(),
                   ),
                   items: _countries.map((country) {
                     return DropdownMenuItem(
@@ -175,7 +220,7 @@ class _RegistrationFormState extends State<RegistrationForm> {
                 const SizedBox(height: 10.0),
                 TextFormField(
                   controller: _lifeHistoryController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                       labelText: 'Life Story',
                       hintText: 'Tell us about your self',
                       helperText: 'Keep it short, this is just a demo',
@@ -191,45 +236,45 @@ class _RegistrationFormState extends State<RegistrationForm> {
                     return null;
                   },
                 ),
-                SizedBox(height: 10.0),
+                const SizedBox(height: 10.0),
                 TextFormField(
                   controller: _passwordController,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     hintText: 'Enter your password',
                     suffixIcon: IconButton(
-                      icon: Icon(Icons.visibility),
+                      icon: const Icon(Icons.visibility),
                       onPressed: () {
                         setState(() {
                           _hidePass = !_hidePass;
                         });
                       },
                     ),
-                    icon: Icon(Icons.security),
+                    icon: const Icon(Icons.security),
                   ),
                   obscureText: _hidePass,
                   validator: (value) {
-                    if (value!.isEmpty) {
+                    if (value!.isEmpty || value.length < 8) {
                       return 'Password is required';
                     }
                     return null;
                   },
                 ),
-                SizedBox(height: 10.0),
+                const SizedBox(height: 10.0),
                 TextFormField(
                   controller: _confirmPasswordController,
                   decoration: InputDecoration(
                     labelText: 'Confirm Password',
                     hintText: 'Confirm your password',
                     suffixIcon: IconButton(
-                      icon: Icon(Icons.visibility),
+                      icon: const Icon(Icons.visibility),
                       onPressed: () {
                         setState(() {
                           _hidePass = !_hidePass;
                         });
                       },
                     ),
-                    icon: Icon(Icons.border_color),
+                    icon: const Icon(Icons.border_color),
                   ),
                   obscureText: _hidePass,
                   validator: (value) {
@@ -243,102 +288,42 @@ class _RegistrationFormState extends State<RegistrationForm> {
                 ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SecondPage(
-                            fullName: _fullNameController.text,
-                            phoneNumber: _phoneNumberController.text,
-                            email: _emailController.text,
-                            country: _selectedCountry,
-                            lifeHistory: _lifeHistoryController.text,
-                          ),
-                        ),
-                      );
+                      _authBloc.add(UserRegisterEvent(
+                        name: _NameController.text,
+                        phoneNumber: _phoneNumberController.text,
+                        email: _emailController.text,
+                        country: _selectedCountry,
+                        lifeHistory: _lifeHistoryController.text,
+                        password: _passwordController.text,
+                      ));
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    primary: Colors.green,
-                  ),
                   child: Text(LocaleKeys.Hello.tr()),
                 ),
-                const SizedBox(width: 20.0),
+                const SizedBox(height: 10.0),
                 ElevatedButton(
                   onPressed: () {
                     context.setLocale(Locale('en'));
                   },
-                  child: Text('English'),
+                  child: const Text('English'),
                 ),
-                const SizedBox(width: 20.0),
+                const SizedBox(height: 10.0),
                 ElevatedButton(
                   onPressed: () {
                     context.setLocale(Locale('kk'));
                   },
-                  child: Text('Казахский'),
+                  child: const Text('Казахский'),
                 ),
-                const SizedBox(width: 20.0),
+                const SizedBox(height: 10.0),
                 ElevatedButton(
                   onPressed: () {
                     context.setLocale(Locale('ru'));
                   },
-                  child: Text('Русский'),
+                  child: const Text('Русский'),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class SecondPage extends StatelessWidget {
-  final String fullName;
-  final String phoneNumber;
-  final String email;
-  final String country;
-  final String lifeHistory;
-
-  SecondPage({
-    required this.fullName,
-    required this.phoneNumber,
-    required this.email,
-    required this.country,
-    required this.lifeHistory,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Registration Data'),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              leading: Icon(Icons.person),
-              title: Text('Name: $fullName'),
-            ),
-            ListTile(
-              leading: Icon(Icons.call),
-              title: Text('Phone Number: $phoneNumber'),
-            ),
-            ListTile(
-              leading: Icon(Icons.mail),
-              title: Text('Email: $email'),
-            ),
-            ListTile(
-              leading: Icon(Icons.map),
-              title: Text('Country: $country'),
-            ),
-            ListTile(
-              leading: Icon(Icons.book),
-              title: Text('Life History: $lifeHistory'),
-            ),
-          ],
         ),
       ),
     );

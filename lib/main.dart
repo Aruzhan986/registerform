@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
       locale: context.locale,
       title: 'Registration',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.grey,
       ),
       home: Secp(),
     );
